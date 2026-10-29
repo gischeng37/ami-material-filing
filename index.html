@@ -1,0 +1,333 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>物料智能辨識建檔（雲端版）</title><style>
+*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Microsoft JhengHei",sans-serif;margin:0;background:#f4f1ea;color:#222;line-height:1.6}
+header{background:#17351f;color:#fff;padding:18px 16px}header h1{margin:0 0 6px;font-size:22px}header p{margin:0;opacity:.9}
+.wrap{max-width:1180px;margin:0 auto;padding:16px}.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0}
+button,.btn{border:0;border-radius:10px;padding:10px 14px;cursor:pointer;font-size:15px;background:#17351f;color:#fff;min-height:44px}button.sec{background:#fff;color:#17351f;border:1.5px solid #17351f}button.warn{background:#b45309}
+.lang{margin-left:auto;display:flex;gap:6px}.lang button{background:#fff;color:#17351f}.lang button.on{background:#e8b400;color:#222}
+.card{background:#fff;border:1px solid #ddd;border-radius:14px;padding:16px;margin:14px 0;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.kpi div{background:#fff;border-radius:12px;padding:12px;text-align:center;border:1px solid #ddd}.kpi b{font-size:26px;display:block}
+.drop{border:2.5px dashed #7a8a7a;border-radius:14px;padding:26px;text-align:center;background:#fbfaf6}.drop.over{border-color:#e8b400;background:#fff8d6}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:12px}.ph{border:1px solid #ddd;border-radius:10px;overflow:hidden;background:#fff;cursor:grab}.ph img{width:100%;height:150px;object-fit:cover;display:block}.ph div{padding:8px;font-size:13px}.ph select{width:100%;margin-top:6px;padding:8px}
+.groups{display:grid;grid-template-columns:1fr 1fr;gap:16px}.g{border:2px solid #d8d2c2}.g.filed{border-color:#15803d}.g.merge{opacity:.55}
+.ghead{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:12px;background:#eef2ee}.tag.pend{background:#fee2e2;color:#991b1b}.tag.ver{background:#fef3c7;color:#92400e}.tag.filed{background:#dcfce7;color:#166534}
+input,textarea,select{width:100%;padding:9px;border:1px solid #ccc;border-radius:8px;font-size:15px}input.pend{border-color:#dc2626;background:#fff5f5}
+.frow{display:grid;grid-template-columns:150px 1fr;gap:8px;margin:8px 0;align-items:start}.frow small{color:#666;display:block}
+.batch{background:#f8f6f0;border-radius:8px;padding:8px 10px;margin:6px 0;font-size:14px}
+.ocr{white-space:pre-wrap;background:#f4f4f4;border-radius:8px;padding:10px;font-size:13px;max-height:180px;overflow:auto}
+details{margin-top:10px}summary{cursor:pointer;font-weight:700}
+.light{position:fixed;inset:0;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;z-index:9;padding:16px}.light img{max-width:100%;max-height:85vh}.light.show{display:flex}
+.note{background:#fff7d6;border:1px solid #e8b400;border-radius:10px;padding:12px}
+@media(max-width:768px){.groups{grid-template-columns:1fr}.kpi{grid-template-columns:1fr 1fr}.frow{grid-template-columns:1fr}header h1{font-size:19px}.thumbs{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:480px){.kpi{grid-template-columns:1fr 1fr}.thumbs{grid-template-columns:1fr 1fr}body{font-size:15px}}
+.aBox{background:#fff7d6;border:1px solid #e8b400;border-radius:10px;padding:10px;margin:10px 0}.aGrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}.aGrid label{font-size:13px;color:#444}.aGrid input{margin-top:4px}@media(max-width:768px){.aGrid{grid-template-columns:1fr}}</style></head><body>
+<header><h1 data-k="title">物料智能辨識建檔系統（雲端版）</h1><p data-k="sub">多張照片一次匯入 → 外觀自動分組 → 拖曳調整 → 確認後建檔。產品名與代號可後補，也可關聯現有資料庫。</p>
+<div class="bar"><span id="today"></span> <span id="authBar" style="margin-left:10px"></span><div class="lang"><button id="bZh" onclick="setLang('zh')">中文</button><button id="bEn" onclick="setLang('en')">EN</button></div></div></header>
+<div class="wrap">
+<div class="card" id="loginCard"><h2 data-k="loginTitle"></h2><p data-k="loginHint" style="color:#555"></p>
+<div id="loginForm"><label><span data-k="loginEmail"></span><input id="loginEmailIn" type="email" autocomplete="username"></label>
+<label><span data-k="loginPw"></span><input id="loginPwIn" type="password" autocomplete="current-password"></label>
+<p><button onclick="cloudSignIn()" data-k="loginBtn"></button></p></div>
+<div id="setPwForm" style="display:none"><p data-k="setPwHint"></p><label><span data-k="setPwLabel"></span><input id="setPwIn" type="password" autocomplete="new-password"></label>
+<p><button onclick="cloudSetPassword()" data-k="setPwBtn"></button></p></div>
+<div id="loginMsg" style="color:#991b1b;margin-top:8px"></div></div>
+
+<div class="kpi"><div><b>20</b><span data-k="k1">張照片</span></div><div><b id="gCount">4</b><span data-k="k2">個自動群組</span></div><div><b>1</b><span data-k="k3">個疑似合併項</span></div><div><b>2</b><span data-k="k4">項尺寸待補／待確認</span></div></div>
+
+<div class="card"><h2 data-k="s1">① 匯入照片（拖曳 / 點選 / 多張）</h2>
+<div class="drop" id="drop"><p data-k="drop">把照片拖到這裡，或點一下選檔。已載入的照片不會被覆蓋，新照片先進「待分組」。</p>
+<input type="file" id="fileIn" accept="image/*" multiple style="display:none"><br><button onclick="document.getElementById('fileIn').click()" data-k="pick">選擇照片</button>
+<button class="sec" onclick="addGroup()" data-k="newGroup">＋ 新增空白群組</button> <button class="sec" onclick="addRawGroup()" data-k="newRawGroup">＋ 新增原料空白群組</button></div>
+<p data-k="ocrNote" style="color:#555">離線版說明：瀏覽器單檔版不接外部 OCR 服務。新照片請在照片卡片下方貼上標籤文字，按「解析標籤」會按 SIZE／LOT／QTY／MFG／EXP 等關鍵字自動填欄位；預載的 10 張照片 OCR 文字已由人工逐字核對。</p>
+<h3 data-k="pool">待分組照片</h3><div id="pool" class="thumbs"></div><div id="poolEmpty" style="color:#666" data-k="poolEmpty">目前沒有待分組照片，預載批次已全部分組。</div></div>
+
+<div class="card note"><b data-k="mergeTitle">疑似合併提醒：G-B LIPC 與 G-D Lefancaps</b><p data-k="mergeBody">兩組同製造商（江蘇 Lefan）、同規格 00#、同顏色 CLEAR/CLEAR、同每箱 75,000，但包裝設計、品牌與批號不同。系統先分開，避免把不同包裝誤併為同一產品。如果你確認它們是同一內部產品（例如都對應 AC_00VC），按下面合併；合併後仍保留各自批號明細，隨時可還原。</p>
+<button class="warn" id="mergeBtn" onclick="mergeBD()" data-k="mergeBtn">合併 G-D 到 G-B</button>
+<button class="sec" id="unmergeBtn" onclick="unmergeBD()" style="display:none" data-k="unmergeBtn">還原合併</button></div>
+
+<div class="card"><h2 data-k="knowTitle">膠囊分類科普</h2><ul><li data-k="knowMat"></li><li data-k="knowSize"></li><li data-k="knowColor"></li><li data-k="knowPrint"></li><li data-k="knowBox"></li></ul></div>
+<datalist id="matList"><option value="Gelatin"></option><option value="Hypromellose HPMC Vegetal"></option><option value="Hypromellose HPMC VG"></option><option value="Empty Hard Capsules"></option></datalist>
+<datalist id="sizeList"><option value="#1"></option><option value="#0"></option><option value="#00"></option><option value="00#"></option></datalist>
+<datalist id="pkgList"><option value="紙箱"></option><option value="纖維紙桶"></option><option value="塑膠桶"></option><option value="紙袋"></option><option value="印刷紙箱"></option><option value="棧板整板"></option></datalist>
+<datalist id="colorList"><option value="CLEAR"></option><option value="CLEAR/CLEAR"></option><option value="WHITE"></option><option value="WHITE OP."></option></datalist>
+<div class="card"><h2 data-k="lookupTitle">品號查詢關聯</h2><p data-k="lookupHint"></p><p data-k="codeRule" style="font-size:14px;color:#444"></p><input id="lookupIn" placeholder="例如 AC_00VC"><button onclick="lookup()" data-k="lookupBtn" style="margin-top:8px">查詢</button><div id="lookupOut" style="margin-top:10px"></div></div>
+<div class="card"><h2 data-k="waitTitle">待補名單</h2><p data-k="waitNote"></p><div id="waitList"></div><button onclick="exportWaitCSV()" data-k="waitExport" style="margin-top:10px">匯出待補名單 CSV</button> <button class="sec" onclick="render()">重新整理待補名單</button></div>
+<div class="card"><h2 data-k="planTitle">兩階段建檔規劃</h2><ul><li data-k="planS1"></li><li data-k="planS2"></li><li data-k="planPrec"></li><li data-k="planRet"></li><li data-k="planFuture"></li></ul></div>
+<div class="card"><h2 data-k="dashTitle">建檔進度總覽</h2><div id="stageDash"></div><button onclick="exportStage2()" data-k="stage2Export" style="margin-top:8px">匯出第二階段正式資料集</button> <button class="sec" onclick="exportArchive()" data-k="archiveExport">匯出封存包</button> <button class="sec" onclick="localStorage.removeItem('matFiling_v6');location.reload()" data-k="resetLocal">清除本地暫存並重置</button></div>
+<div class="card"><h2 data-k="classTitle"></h2><p data-k="classBody"></p><p data-k="classBody2"></p></div>
+<div class="card"><h2 data-k="evolTitle"></h2><p data-k="evolBody"></p><p data-k="evolBody2"></p></div>
+<div class="card"><h2 data-k="rawGuideTitle"></h2><p data-k="rawGuideBody"></p></div>
+<div id="groups" class="groups"></div>
+
+<div class="card"><h2 data-k="s2">② 確認與匯出</h2><p data-k="expNote">每組按「確認建檔」後狀態變為已建檔。匯出不含照片原圖 base64，只含檔名、欄位與批號，方便貼回 Notion／Google Sheets。</p>
+<button onclick="exportJSON()" data-k="expJson">匯出 JSON</button> <button class="sec" onclick="exportCSV()" data-k="expCsv">匯出 CSV（產品級）</button>
+<button class="sec" onclick="exportCSV(true)" data-k="expCsvFiled">只匯出已建檔 CSV</button></div>
+
+<div class="card"><h2 data-k="rules">建檔規則（本批已套用）</h2><ul>
+<li data-k="r1">批號／箱號是「箱級」屬性，不是產品屬性：同一產品多個批號要分開列在批號明細，不可只留一個。</li>
+<li data-k="r2">照片數 ≠ 箱數：同一箱多角度照片要歸同一群組，不可按照片數算庫存。</li>
+<li data-k="r3">未確認值標紅「待補」：外箱長寬高後補，EMBO 的 570×395×740 未註單位，暫按 mm，實測後再改。</li>
+<li data-k="r4">模糊／倒置的手寫與貼紙不進正式欄位，只寫在疑點備註，現場確認後再補。</li>
+<li data-k="r5">材質要分清：明膠（Gelatin）≠ 植物／HPMC（Hypromellose），黃山組是明膠，不可與 Lefan HPMC 組合併。</li>
+</ul></div>
+</div>
+<div class="light" id="light" onclick="this.classList.remove('show')"><img id="lightImg"></div>
+<script>
+const DATA={"photos":{},"meta":{},"groups":[]};
+let lang=localStorage.getItem('matLang')||'zh';
+let state=JSON.parse(JSON.stringify(DATA.groups));
+let pool=['R10']; let mergeBackup=null;
+const T={
+title:{zh:'物料智能辨識建檔系統（雲端版）',en:'Material Smart Filing (Cloud)'},
+sub:{zh:'雲端版：登入後才載入資料與照片，建檔進度即時同步到雲端。',en:'Import many photos at once → auto-group by appearance → drag to adjust → confirm to file. Name and code can be added later, or linked to an existing record.'},
+k1:{zh:'張照片',en:'photos'},k2:{zh:'個自動群組',en:'auto groups'},k3:{zh:'個疑似合併項',en:'possible merge'},k4:{zh:'項尺寸待補／待確認',en:'sizes pending / to verify'},
+s1:{zh:'① 匯入照片（拖曳 / 點選 / 多張）',en:'1. Import photos (drag / tap / multiple)'},
+drop:{zh:'把照片拖到這裡，或點一下選檔。已載入的照片不會被覆蓋，新照片先進「待分組」。',en:'Drag photos here, or tap to choose files. Loaded photos are kept; new photos go to “Ungrouped” first.'},
+pick:{zh:'選擇照片',en:'Choose photos'},newGroup:{zh:'＋ 新增空白群組',en:'+ New empty group'},
+ocrNote:{zh:'離線版說明：瀏覽器單檔版不接外部 OCR 服務。新照片請在照片卡片下方貼上標籤文字，按「解析標籤」會按 SIZE／LOT／QTY／MFG／EXP 等關鍵字自動填欄位；預載的 10 張照片 OCR 文字已由人工逐字核對。',en:'Offline note: this single-file version does not call an external OCR service. For a new photo, paste its label text under the photo card and tap “Parse label”; SIZE / LOT / QTY / MFG / EXP keywords auto-fill fields. The 10 preloaded photos’ OCR text was checked character by character.'},
+pool:{zh:'待分組照片',en:'Ungrouped photos'},poolEmpty:{zh:'目前沒有待分組照片，預載批次已全部分組。',en:'No ungrouped photos — the preloaded batch is fully grouped.'},
+mergeTitle:{zh:'疑似合併提醒：G-B LIPC 與 G-D Lefancaps',en:'Possible merge: G-B LIPC and G-D Lefancaps'},
+mergeBody:{zh:'兩組同製造商（江蘇 Lefan）、同規格 00#、同顏色 CLEAR/CLEAR、同每箱 75,000，但包裝設計、品牌與批號不同。系統先分開，避免把不同包裝誤併為同一產品。如果你確認它們是同一內部產品（例如都對應 AC_00VC），按下面合併；合併後仍保留各自批號明細，隨時可還原。',en:'Same maker (Jiangsu Lefan), same size 00#, same CLEAR/CLEAR, same 75,000 per case — but different packaging, branding and lots. They are kept apart first so different packaging is not merged by mistake. If you confirm they are one internal product (e.g. both AC_00VC), merge below; lot details stay separate and the merge can be undone.'},
+mergeBtn:{zh:'合併 G-D 到 G-B',en:'Merge G-D into G-B'},unmergeBtn:{zh:'還原合併',en:'Undo merge'},
+s2:{zh:'② 確認與匯出',en:'2. Confirm & export'},
+expNote:{zh:'每組按「確認建檔」後狀態變為已建檔。匯出不含照片原圖 base64，只含檔名、欄位與批號，方便貼回 Notion／Google Sheets。',en:'Tap “Confirm filing” on a group to mark it Filed. Exports exclude photo base64 and keep filenames, fields and lots, ready for Notion / Google Sheets.'},
+expJson:{zh:'匯出 JSON',en:'Export JSON'},expCsv:{zh:'匯出 CSV（產品級）',en:'Export CSV (product level)'},expCsvFiled:{zh:'只匯出已建檔 CSV',en:'Export filed-only CSV'},
+rules:{zh:'建檔規則（本批已套用）',en:'Filing rules (applied to this batch)'},
+r1:{zh:'批號／箱號是「箱級」屬性，不是產品屬性：同一產品多個批號要分開列在批號明細，不可只留一個。',en:'Lot / carton no. is carton-level, not product-level: list every lot separately in lot details; never keep only one.'},
+r2:{zh:'照片數 ≠ 箱數：同一箱多角度照片要歸同一群組，不可按照片數算庫存。',en:'Photo count ≠ carton count: different angles of one carton belong in one group; never count stock by photos.'},
+r3:{zh:'未確認值標紅「待補」：外箱長寬高後補，EMBO 的 570×395×740 未註單位，暫按 mm，實測後再改。',en:'Unconfirmed values are marked red “Pending”: carton L×W×H is added later. EMBO 570×395×740 has no unit on the photo, treated as mm for now, to be measured.'},
+r4:{zh:'模糊／倒置的手寫與貼紙不進正式欄位，只寫在疑點備註，現場確認後再補。',en:'Blurred or upside-down handwriting and labels stay out of formal fields; they go in notes until verified on site.'},
+r5:{zh:'材質要分清：明膠（Gelatin）≠ 植物／HPMC（Hypromellose），黃山組是明膠，不可與 Lefan HPMC 組合併。',en:'Keep materials apart: gelatin ≠ vegetable / HPMC (hypromellose). The Huangshan group is gelatin and must not merge with the Lefan HPMC groups.'},
+aTitle:{zh:'A級欄位',en:'A-level required'},
+aOk:{zh:'三項齊全，可確認建檔',en:'All three present — ready to confirm'},
+knowTitle:{zh:'膠囊分類科普（建檔時用，不是用來猜）',en:'Capsule guide (for filing, not for guessing)'},
+knowMat:{zh:'原料分兩大類：明膠 Gelatin（動物來源）與植物膠 Hypromellose HPMC Vegetal／VG（植物來源）。建檔以標籤材質文字為準，不要只憑顏色判斷。',en:'Two material families: Gelatin (animal source) and plant-based Hypromellose HPMC Vegetal / VG. File by the label material text, never by colour alone.'},
+knowSize:{zh:'尺寸常用：#1、#0、#00。本批是 #0 與 00#；#1 是未來新照片的選項，不是本批實測值。',en:'Common sizes: #1, #0, #00. This batch is #0 and 00#; #1 is an option for future photos, not a value measured in this batch.'},
+knowColor:{zh:'顏色常用：透明 Clear／Clear-Clear、白色 White／White OP，另有其他顏色。顏色要分蓋 Cap 與身 Body 兩欄，不要只寫一個。',en:'Common colours: Clear / Clear-Clear, White / White OP, plus other colours. Record Cap and Body separately, never as one colour.'},
+knowPrint:{zh:'印刷色只是線索：常見明膠用藍色、植物膠用綠色，但不代表全部；同色也可能出現在不同材質，必須回標籤核對。',en:'Print colour is only a clue: gelatin is commonly blue print and plant-based commonly green print, but that is not a rule. The same colour can appear on different materials — always check the label.'},
+knowBox:{zh:'同一家供應商紙箱尺寸比較一致，可作參考與異常提醒，但不能自動套用。例如 Lefan 的 LIPC 已知 395×600×700 mm，Lefancaps 尺寸待補，不能直接抄過去，實測後再填。',en:'One supplier usually keeps carton size consistent, so it is a useful reference and anomaly flag, but never auto-copied. Example: Lefan LIPC is 395×600×700 mm; Lefancaps size is still pending and must not be copied from it — measure first.'},
+lookupTitle:{zh:'品號查詢關聯（AMI ↔ 廠商）',en:'Item-code lookup (AMI ↔ vendor)'},
+lookupHint:{zh:'輸入廠商代號或 AMI 品號，查現有紀錄；查無紀錄可人工建檔。AMI 品號全域唯一，重複即擋下確認建檔。',en:'Enter a vendor code or AMI item code to look up existing records; if none exists, file it manually. AMI item codes are globally unique — a duplicate blocks confirmation.'},
+lookupBtn:{zh:'查詢',en:'Search'},
+codeRule:{zh:'品號規則：掃描廠商標籤取得廠商代號，AMI 代號用查詢建立關聯或人工建檔；訂單號、批號、顏色代號都不是品號，不要混用；廠商代號若標籤上沒有，標待補，不要用批號代替。',en:'Item-code rule: scan the vendor label for the vendor code, link or manually create the AMI code by lookup; order numbers, lot numbers and colour codes are not item codes; if the label has no vendor code, mark it pending — never substitute a lot number.'},
+waitTitle:{zh:'待補名單（已建檔，但 MFG／EXP 缺失）',en:'Waitlist (filed, but MFG / EXP missing)'},
+waitNote:{zh:'規則改了：MFG 製造日期、EXP 有效期限沒有資料時，也可以先建檔，缺項會自動進這張待補名單管理，不會卡住建檔。LOT 批號、AMI 品號缺失或重複，仍然擋下確認。草稿組還沒建檔，不進待補名單；建檔後缺項才會出現在這裡。填完後按重新整理即移出。',en:'New rule: if MFG or EXP is missing, you can still file first — the missing item goes to this waitlist instead of blocking filing. Missing LOT or a missing / duplicate AMI code still blocks confirmation. Draft groups are not on the waitlist; only filed groups with missing dates appear here, and they leave automatically once filled.'},
+waitEmpty:{zh:'目前沒有已建檔的待補項目。',en:'No filed waitlist items right now.'},
+waitFiledTag:{zh:'已建檔（待補）',en:'Filed (waitlist)'},
+waitExport:{zh:'匯出待補名單 CSV',en:'Export waitlist CSV'},
+stage1Btn:{zh:'第一階段建檔（基礎，容許空值）',en:'Stage 1 filing (basic, empty allowed)'},
+stage2Btn:{zh:'第二階段確認（完整＋精準）',en:'Stage 2 confirm (complete + precise)'},
+backStage1:{zh:'退回第一階段',en:'Back to Stage 1'},
+stage1Tag:{zh:'第一階段已建檔',en:'Stage 1 filed'},
+stage2Tag:{zh:'第二階段已確認',en:'Stage 2 confirmed'},
+checkTitle:{zh:'第二階段檢查清單',en:'Stage 2 checklist'},
+boxMeasured:{zh:'外箱尺寸已實測確認',en:'Carton size measured and confirmed'},
+logTitle:{zh:'確認紀錄（封存，含照片）',en:'Confirmation log (archived, with photos)'},
+planTitle:{zh:'兩階段建檔規劃',en:'Two-stage filing plan'},
+planS1:{zh:'第一階段＝基礎建檔：盡量建立需要的資料，先求精準、再求完整。欄位容許空值，但已填的值必須是核實過的，不能用推測填滿；不確定的標待補、待確認。',en:'Stage 1 = basic filing: build what is needed, precision first, completeness second. Fields may be empty, but any filled value must be verified — never fill a guess; mark uncertain items pending.'},
+planS2:{zh:'第二階段＝確認完整性與精準性：大類、品號、廠商短代號、材質尺寸顏色、每批 LOT／MFG／EXP、外箱實測尺寸、照片與外觀都要齊全且一致，達標才算第二階段已確認。',en:'Stage 2 = completeness and precision check: category, item, vendor short, material/size/colour, every lot LOT/MFG/EXP, measured carton size, photos and appearance must all be complete and consistent.'},
+planPrec:{zh:'正式精度基礎：只有第二階段已確認的資料，才能作為正式系統的精度基礎，也才能用於視覺辨識、3D 與向量功能開發；第一階段資料只能作為輔助建檔，不能直接當正式精度用。',en:'Formal precision basis: only Stage 2 confirmed data may serve as the precision basis for the formal system and for visual-recognition, 3D and vector development. Stage 1 data is auxiliary filing only.'},
+planRet:{zh:'資料全保留：每次確認都會封存當時的欄位、批號與全部關聯照片；照片只可移組、不可刪除；建檔進度也會存到本機暫存，重開頁面仍可還原。',en:'Full retention: every confirmation archives the fields, lots and all linked photos at that moment; photos can be moved between groups but never deleted; progress is also saved locally so reopening the page restores it.'},
+planFuture:{zh:'未來開發介面：第二階段資料集可匯出 JSON（含大類、品號、照片檔名與 OCR、外觀指紋、確認紀錄），供視覺辨識比對、3D 外箱建模與向量檢索接續使用。',en:'Future interface: the Stage 2 dataset exports as JSON (category, item, photo filenames and OCR, appearance fingerprint, confirmation log) for visual-recognition matching, 3D carton modelling and vector retrieval.'},
+dashTitle:{zh:'建檔進度總覽',en:'Filing progress'},
+stage2Export:{zh:'匯出第二階段正式資料集 JSON',en:'Export Stage 2 formal dataset JSON'},
+archiveExport:{zh:'匯出封存包 JSON（含確認紀錄與照片清單）',en:'Export archive JSON (with log and photo list)'},
+resetLocal:{zh:'清除本地暫存並重置',en:'Clear local save and reset'},
+filed:{zh:'已建檔',en:'Filed'},draft:{zh:'草稿／待確認',en:'Draft / to confirm'},
+confirm:{zh:'確認建檔',en:'Confirm filing'},codePh:{zh:'品號（大類_廠商短代號，例如 00VC_LF）',en:'Item code (Category_VendorShort, e.g. 00VC_LF)'},
+linkPh:{zh:'關聯現有資料庫（料號／Notion ID，可空白）',en:'Link existing record (item code / Notion ID, optional)'},
+name:{zh:'產品名稱（建議名，可改）',en:'Product name (suggested, editable)'},
+moveTo:{zh:'移至群組…',en:'Move to group…'},parse:{zh:'解析標籤',en:'Parse label'},pastePh:{zh:'貼上此照片的標籤文字…',en:'Paste this photo’s label text…'},
+};
+function t(k){return (T[k]&&T[k][lang])||k}
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;')}
+function setLang(l){lang=l;localStorage.setItem('matLang',l);render()}
+function photoCard(pid){
+const m=DATA.meta[pid];
+return `<div class="ph" draggable="true" ondragstart="event.dataTransfer.setData('text/plain','${pid}')">
+<img src="${DATA.photos[pid]}" onclick="showImg('${pid}')" alt="${pid}">
+<div><b>${pid}</b> · ${esc(m.file)}<br>${lang=='zh'?m.zh:m.en}
+<select onchange="movePhoto('${pid}',this.value)"><option value="">${t('moveTo')}</option>${state.map(g=>`<option value="${g.id}">${g.id}</option>`).join('')}<option value="pool">${lang=='zh'?'待分組':'Ungrouped'}</option></select></div></div>`;
+}
+function movePhoto(pid,gid){
+state.forEach(g=>g.photos=g.photos.filter(x=>x!==pid));
+if(gid==='pool'){ if(!pool.includes(pid)) pool.push(pid);}
+else { const g=state.find(x=>x.id===gid); if(g&&!g.photos.includes(pid)) g.photos.push(pid); pool=pool.filter(x=>x!==pid);}
+render();
+}
+function showImg(pid){document.getElementById('lightImg').src=DATA.photos[pid];document.getElementById('light').classList.add('show')}
+function addGroup(preCode,preVendor){
+const id='G-'+String(state.length+1).padStart(2,'0');
+const keys=[['brand','品牌 / 供應商','Brand / supplier'],['material','材質','Material'],['size','規格','Size'],['cap','蓋顏色','Cap colour'],['body','身顏色','Body colour'],['qty','每箱數量','Qty per case'],['origin','產地','Origin'],['box','外箱尺寸','Carton size'],['storage','儲存條件','Storage']];
+state.push({id,status:'draft',code:preCode||'',vendor:preVendor||'',link:'',nameZh:'新產品（請命名）',nameEn:'New product (please name)',conf:'—',confEn:'—',reasonZh:'新匯入照片，待人工分組與核對。',reasonEn:'Newly imported photo, awaiting manual grouping and checking.',lookZh:'',lookEn:'',photos:[],fields:keys.map(k=>({k:k[0],zh:k[1],en:k[2],v:'',src:'',st:'pending'})),batches:[{lot:'',mfg:'',exp:'',carton:'',src:'手動新增'}],noteZh:'',noteEn:''});
+render();
+}
+function mergeBD(){
+mergeBackup=JSON.stringify(state);
+const b=state.find(g=>g.id==='G-B'), d=state.find(g=>g.id==='G-D');
+d.photos.forEach(p=>{if(!b.photos.includes(p)) b.photos.push(p)}); b.batches=b.batches.concat(d.batches);
+b.noteZh+='G-D Lefancaps 併入本組（包裝差異見照片），批號明細仍分開。'; b.noteEn+=' [Merged] G-D Lefancaps merged here (packaging differs — see photos); lot details stay separate.';
+d.photos=[]; d.status='merged'; render();
+document.getElementById('unmergeBtn').style.display='inline-block';
+}
+function unmergeBD(){ if(mergeBackup){state=JSON.parse(mergeBackup); mergeBackup=null; render(); document.getElementById('unmergeBtn').style.display='none';}}
+function download(name,txt,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type}));a.download=name;a.click()}
+function exportJSON(){const out=state.map(g=>({id:g.id,status:g.status,name:lang=='zh'?g.nameZh:g.nameEn,code:g.code,link:g.link,photos:g.photos.map(p=>DATA.meta[p].file),fields:Object.fromEntries(g.fields.map(f=>[f.k,f.v])),batches:g.batches}));download('material-filing-v6.json',JSON.stringify(out,null,2),'application/json')}
+function csvEsc(s){s=String(s??'');return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s}
+function exportCSV(filedOnly){
+const rows=state.filter(g=>!filedOnly||(g.status==='stage1'||g.status==='stage2'));
+const head=['Group','Type','Name','Category','Item','VendorShort','Vendor','Legacy','Link','Status','Brand','Material','Size','Pkg','Spec','Net','Gross','AMILot','Job','TotalQty','Lots','MFGs','EXPs','BoxSize','Photos']
+const lines=[head.join(',')];
+rows.forEach(g=>{const f=o=>{const x=g.fields.find(y=>y.k===o);return x?x.v:''};
+lines.push([g.id,catTypeOf(g),lang=='zh'?g.nameZh:g.nameEn,g.category||'',g.code,g.vendorShort||'',g.vendor||'',g.legacy||'',g.link,g.status,f('brand'),f('material'),f('size'),f('pkg'),f('spec'),f('net'),f('gross'),f('amiLot'),f('job'),f('totalQty'),g.batches.map(b=>b.lot).join(' | '),g.batches.map(b=>b.mfg).join(' | '),g.batches.map(b=>b.exp).join(' | '),f('box'),g.photos.join(' ')].map(csvEsc).join(','))});
+download('material-filing-v6.csv',lines.join('\n'),'text/csv');
+}
+function render(){
+document.querySelectorAll('[data-k]').forEach(el=>{const k=el.getAttribute('data-k'); if(T[k]) el.textContent=t(k)});
+document.getElementById('bZh').className=lang=='zh'?'on':''; document.getElementById('bEn').className=lang=='en'?'on':'';
+document.getElementById('today').textContent=(lang=='zh'?'批次：2026-10-25 膠囊 10 張 ＋ 2026-10-28 原料 10 張':'Batches: 2026-10-25 capsules 10 photos + 2026-10-28 raw materials 10 photos');
+document.getElementById('pool').innerHTML=pool.map(photoCard).join('');
+document.getElementById('poolEmpty').style.display=pool.length?'none':'block';
+document.getElementById('gCount').textContent=state.filter(g=>g.status!=='merged').length;
+const box=document.getElementById('groups'); box.innerHTML='';
+state.forEach(g=>{
+if(g.status==='merged') return;
+const name=lang=='zh'?g.nameZh:g.nameEn;
+const done=g.fields.filter(f=>f.v).length;
+const el=document.createElement('div'); el.className='card g'+(g.status==='stage1'||g.status==='stage2'?' filed':'');
+el.innerHTML=`<div class="ghead"><div><b>${g.id}</b> <span class="tag ${g.status==='stage1'||g.status==='stage2'?'filed':''}">${g.status==='stage2'?t('stage2Tag'):g.status==='stage1'?(g.batches.some(b=>isMiss(b.mfg)||isMiss(b.exp))?t('waitFiledTag'):t('stage1Tag')):t('draft')}</span>
+<span class="tag">${lang=='zh'?'自動分組信心':'Auto-group confidence'}: ${lang=='zh'?g.conf:g.confEn}</span>
+<span class="tag">${catTypeOf(g)==='raw'?(lang=='zh'?'原料':'Raw material'):(lang=='zh'?'膠囊':'Capsule')}</span>
+<span class="tag">${done}/${g.fields.length} ${lang=='zh'?'欄位已填':'fields filled'}</span></div>
+<button onclick="document.querySelector('[data-g=&quot;${g.id}&quot;]').status='filed';render()" style="padding:8px 10px">${g.status==='stage2'?t('backStage1'):g.status==='stage1'?t('stage2Btn'):t('stage1Btn')}</button></div>
+<p><input data-g="${g.id}" data-f="__name" value="${esc(name)}" oninput="updName('${g.id}',this.value)"></p>
+<p><input placeholder="${t('codePh')}" value="${esc(g.code)}" oninput="upd('${g.id}','code',this.value)">
+<input placeholder="${t('linkPh')}" list="dblist" value="${esc(g.link)}" oninput="upd('${g.id}','link',this.value)" style="margin-top:6px"></p><div class="aBox" style="background:#eef6ff;border-color:#3b82f6">${catTypeOf(g)==='raw'?'<b>品號（AMI 標籤現有，直接沿用）</b>':'<b>品號兩階：大類 → 品號</b>'}<br>大類號：<input value="${esc(g.category||'')}" placeholder="例如 00VC" oninput="upd('${g.id}','category',this.value)" onchange="render()"><br>廠商短代號：<input value="${esc(g.vendorShort||'')}" placeholder="例如 LF" oninput="upd('${g.id}','vendorShort',this.value)" onchange="render()"><br>品號：<b>${esc(g.code||'—')}</b> ${g.category&&g.vendorShort&&normCode(g.code)!==normCode(g.category+'_'+g.vendorShort)?'<span class="tag pend">與自動組成不一致</span>':''} <button class="sec composeBtn">套用自動組成</button> ${amiDup(g.id)?'<span class="tag pend">重複！與 '+amiDup(g.id)+' 相同</span>':''}<br>廠商代號：<input value="${esc(g.vendor||'')}" placeholder="廠商代號（標籤掃描取得，若標籤無則待補）" oninput="upd('${g.id}','vendor',this.value)" onchange="render()"><br>${SUGGEST[g.id]?'<button class="sec suggBtn">填入建議品號 '+SUGGEST[g.id]+'（需你確認，非正式編碼）</button>':(g.id==='G-D'?'<span style="font-size:13px">與 G-B 同大類同品號，建議合併為同一品號的兩個包裝變體，否則第二階段會因重複被擋</span>':'')}<br>${catTypeOf(g)==='raw'?'<small>分類＝物料類型；品號＝AMI 標籤現有 ID，全域唯一，不另造兩階碼。廠商代號若標籤無則待補，不用批號代替。</small>':'<small>大類可重複，品號全域唯一。舊代號：'+esc(g.legacy||'—')+'（查詢保留，AC_00VC 仍可查到 G-B）</small>'}</div>
+<datalist id="dblist"><option value="AC_00VC"></option></datalist>
+<p style="font-size:14px;color:#444">${lang=='zh'?g.reasonZh:g.reasonEn}<br><i>${lang=='zh'?'外觀指紋：':'Appearance fingerprint: '}${lang=='zh'?g.lookZh:g.lookEn}</i></p>
+<div class="thumbs">${g.photos.map(photoCard).join('')||`<p style="color:#888">${lang=='zh'?'此組目前沒有照片（可從其他組拖入）':'No photos in this group yet (drag photos in)'}</p>`}</div>
+${g.fields.map((f,i)=>`<div class="frow"><div>${lang=='zh'?f.zh:f.en}<small>${lang=='zh'?'來源':'Source'}: ${esc(f.src)||'—'} ${f.st==='pending'?'<span class="tag pend">'+(lang=='zh'?'待補':'Pending')+'</span>':f.st==='verify'?'<span class="tag ver">'+(lang=='zh'?'待確認':'To verify')+'</span>':''}</small></div>
+<input list="${f.k==='material'?'matList':f.k==='size'?'sizeList':(f.k==='cap'||f.k==='body')?'colorList':f.k==='pkg'?'pkgList':''}" class="${f.st==='pending'?'pend':''}" value="${esc(f.v)}" oninput="updField('${g.id}',${i},this.value)"></div>`).join('')}
+<b>${lang=='zh'?'批號明細（箱級，不可併成一個）':'Lot details (carton-level — keep separate)'}</b>
+${(()=>{const hard=g.batches.flatMap((b,bi)=>['lot'].filter(k=>isMiss(b[k])).map(k=>'Batch '+(bi+1)+' '+k.toUpperCase())); const soft=g.batches.flatMap((b,bi)=>['mfg','exp'].filter(k=>isMiss(b[k])).map(k=>'Batch '+(bi+1)+' '+k.toUpperCase())); let s='<div class="aBox"><b>'+t('aTitle')+'：LOT / MFG / EXP</b> '; if(hard.length) s+='<span class="tag pend">'+hard.join(', ')+' '+(lang=='zh'?'缺失，不能確認建檔':'missing, cannot confirm')+'</span> '; if(soft.length) s+='<span class="tag ver">'+soft.join(', ')+' '+(lang=='zh'?'缺失，可先建檔，自動進待補名單':'missing, can file first to waitlist')+'</span> '; if(!hard.length&&!soft.length) s+='<span class="tag filed">'+t('aOk')+'</span>'; return s+'</div>'})()}
+${g.batches.map((b,bi)=>`<div class="batch"><div class="aGrid"><label>LOT ${lang=='zh'?'批號':'Lot'} *<input value="${esc(b.lot)}" oninput="updBatch('${g.id}',${bi},'lot',this.value)" onchange="render()" class="${isMiss(b.lot)?'pend':''}"></label><label>MFG ${lang=='zh'?'製造日期':'Mfg date'} *<input value="${isMiss(b.mfg)?'':esc(b.mfg)}" placeholder="待補" oninput="updBatch('${g.id}',${bi},'mfg',this.value)" onchange="render()" class="${isMiss(b.mfg)?'pend':''}"></label><label>EXP ${lang=='zh'?'有效期限':'Expiry'} *<input value="${isMiss(b.exp)?'':esc(b.exp)}" placeholder="待補" oninput="updBatch('${g.id}',${bi},'exp',this.value)" onchange="render()" class="${isMiss(b.exp)?'pend':''}"></label></div>Carton: ${esc(b.carton)} · ${lang=='zh'?'來源':'Source'}: ${esc(b.src)}</div>`).join('')||`<p style="color:#888">${lang=='zh'?'暫無批號明細':'No lot details yet'}</p>`}
+<button class="sec" onclick="addBatch('${g.id}')">+ ${lang=='zh'?'新增一批次':'Add a batch'}</button>
+${(lang=='zh'?g.noteZh:g.noteEn)?`<p class="note" style="font-size:14px">${esc(lang=='zh'?g.noteZh:g.noteEn)}</p>`:''}
+<div class="aBox"><b>${t('checkTitle')}</b><br>${stage2Check(g).map(f=>'<span class="tag pend">'+esc(f)+'</span>').join(' ')||'<span class="tag filed">檢查通過，可升第二階段</span>'}<br><label><input type="checkbox" ${g.boxMeasured?'checked':''} onchange="toggleBoxMeasured('${g.id}',this.checked)"> ${t('boxMeasured')}</label></div>
+<details><summary>${t('logTitle')}</summary>${(g.log||[]).map(l=>'<div class="batch">'+esc(l.t)+' '+esc(l.from)+' → '+esc(l.to)+' · 照片 '+(l.photos||[]).join(', ')+' · 大類 '+(l.category||'')+' · 品號 '+(l.item||'')+'</div>').join('')||'<p>暫無確認紀錄</p>'}</details>
+<details><summary>${lang=='zh'?'各照片 OCR 文字（逐字）':'Per-photo OCR text (verbatim)'}</summary>${g.photos.map(p=>`<p><b>${p}</b></p><div class="ocr">${esc(DATA.meta[p].ocr)}</div>`).join('')}</details>`;
+// filed button needs state access: use dataset trick via onclick above is fragile; replace with proper handler below
+box.appendChild(el); const sb=el.querySelector('.suggBtn'); if(sb) sb.onclick=()=>{g.code=SUGGEST[g.id]; render()}; const cb=el.querySelector('.composeBtn'); if(cb) cb.onclick=()=>{if(g.category&&g.vendorShort){g.code=g.category+'_'+g.vendorShort; render()}};
+el.querySelector('button').onclick=()=>{if(g.status==='stage2'){pushLog(g,'stage2','stage1'); g.status='stage1'; render(); return} if(g.status==='stage1'){const fails=stage2Check(g); if(fails.length){alert((lang=='zh'?'第二階段檢查未通過：':'Stage 2 check failed: ')+fails.join('；')); return} pushLog(g,'stage1','stage2'); g.status='stage2'; render(); return} if(!g.photos.length){alert(lang=='zh'?'第一階段建檔需要至少一張照片':'Stage 1 needs at least one photo'); return} const dup=amiDup(g.id); if(dup && !confirm((lang=='zh'?'品號與 '+dup+' 重複，第一階段可先建檔，但第二階段前必須合併或改號，確認先建檔嗎？':'Item code duplicate with '+dup+' - file Stage 1 first? You must merge or change it before Stage 2.'))) return; const vdup=vendorDupBlock(g); if(vdup){alert((lang=='zh'?'廠商代號與同供應商另一組重複：':'Vendor code duplicate with same supplier: ')+vdup); return} const soft=[]; g.batches.forEach((b,bi)=>{['mfg','exp'].forEach(k=>{if(isMiss(b[k])) soft.push('Batch '+(bi+1)+' '+k.toUpperCase())})}); if(soft.length && !confirm((lang=='zh'?'MFG／EXP 缺失，可先建檔並進待補名單，確認嗎？缺：':'MFG/EXP missing — file first and add to waitlist? Missing: ')+soft.join(', '))) return; pushLog(g,'draft','stage1'); g.status='stage1'; render()}
+});
+renderWait(); updateDash(); saveState();
+
+}
+const SUGGEST={'G-A':'0VW_SU','G-C':'00GC_HS'};
+function normCode(s){return String(s||'').trim().toUpperCase()}
+function amiDup(id){const g=state.find(x=>x.id===id); const c=normCode(g.code); if(!c) return ''; const o=state.find(x=>x.id!==id&&x.status!=='merged'&&normCode(x.code)===c); return o?o.id:''}
+function supKey(g){const f=(k)=>{const x=g.fields.find(y=>y.k===k); return x?x.v:''}; const s=(f('supplier')+' '+f('brand')).toLowerCase(); if(s.includes('lefan')) return 'lefan'; if(s.includes('suheung')) return 'suheung'; if(s.includes('huangshan')) return 'huangshan'; return s.split(' ')[0]||''}
+function vendorDupBlock(g){const v=normCode(g.vendor); if(!v) return ''; const o=state.find(x=>x.id!==g.id&&x.status!=='merged'&&normCode(x.vendor)===v&&supKey(x)===supKey(g)&&supKey(g)); return o?o.id:''}
+function lookup(){const el=document.getElementById('lookupIn'); const q=el.value.trim(); const out=document.getElementById('lookupOut'); if(!q){out.textContent=lang=='zh'?'請先輸入代號':'Please enter a code first'; return} const nq=normCode(q); const hits=state.filter(g=>g.status!=='merged'&&(normCode(g.code)===nq||normCode(g.category)===nq||normCode(g.legacy)===nq||normCode(g.vendor)===nq)); const seed=(nq==='AC_00VC')?'<div>DB：00VC - Size 00 Veggie Clear Capsule · AMI AC_00VC · Jiangsu Lefan / LIPC（與本批 G-B 對應）</div>':''; if(hits.length||seed){out.innerHTML=(lang=='zh'?'找到現有紀錄：':'Existing record found: ')+hits.map(g=>g.id+' '+esc(lang=='zh'?g.nameZh:g.nameEn)+' · AMI '+esc(g.code||'—')+' · 廠商 '+esc(g.vendor||'—')).join('<br>')+seed} else {out.innerHTML=(lang=='zh'?'查無現有紀錄，可人工建檔：':'No existing record — file it manually: ')+'<button onclick="addGroupFromLookup(1)">以此為 AMI 品號建檔</button> <button class="sec" onclick="addGroupFromLookup(2)">以此為廠商代號建檔</button>'}}
+function addGroupFromLookup(kind){const q=document.getElementById('lookupIn').value.trim(); if(kind===1) addGroup(q,''); else addGroup('',q); document.getElementById('lookupOut').textContent=lang=='zh'?'已建立新群組，請在下方填寫其他欄位':'New group created — please fill in the other fields below'}
+function renderWait(){const el=document.getElementById('waitList'); if(!el) return; const rows=[]; state.forEach(g=>{if(g.status!=='stage1'&&g.status!=='stage2') return; g.batches.forEach((b,bi)=>{if(isMiss(b.mfg)||isMiss(b.exp)) rows.push({g:g,bi:bi,b:b})})}); if(!rows.length){el.innerHTML='<p>'+t('waitEmpty')+'</p>'; return} el.innerHTML=rows.map(r=>'<div class="batch"><b>'+r.g.id+'</b> · AMI '+(r.g.code||'—')+' · LOT '+esc(r.b.lot)+' · '+(lang=='zh'?'缺：':'Missing: ')+((isMiss(r.b.mfg)?'MFG ':'')+(isMiss(r.b.exp)?'EXP':''))+'<div class="aGrid" style="margin-top:6px"><label>MFG<input value="'+(isMiss(r.b.mfg)?'':esc(r.b.mfg))+'" placeholder="待補" oninput="updBatch(\''+r.g.id+'\','+r.bi+',\'mfg\',this.value)"></label><label>EXP<input value="'+(isMiss(r.b.exp)?'':esc(r.b.exp))+'" placeholder="待補" oninput="updBatch(\''+r.g.id+'\','+r.bi+',\'exp\',this.value)"></label></div><small>Carton: '+esc(r.b.carton)+' · Source: '+esc(r.b.src)+'</small></div>').join('')}
+function exportWaitCSV(){const rows=[]; state.forEach(g=>{if(g.status!=='stage1'&&g.status!=='stage2') return; g.batches.forEach(b=>{if(isMiss(b.mfg)||isMiss(b.exp)) rows.push([g.id,g.code||'',g.vendor||'',b.lot,isMiss(b.mfg)?'MFG缺失':'',isMiss(b.exp)?'EXP缺失':'',b.carton,b.src])})}); const lines=[['Group','AMI','Vendor','Lot','MissingMFG','MissingEXP','Carton','Source'].join(',')]; rows.forEach(r=>lines.push(r.map(csvEsc).join(','))); download('material-waitlist-v6.csv',lines.join('\n'),'text/csv')}
+function fieldVal(g,k){const x=g.fields.find(y=>y.k===k); return x?x.v:''}
+function catTypeOf(g){return g.catType||(g.id&&g.id[0]==='G'?'capsule':'raw')}
+function stage2Check(g){const fails=[]; const L=(zh,en)=>lang=='zh'?zh:en; if(!normCode(g.category)) fails.push(L('大類／分類缺失','Category missing')); if(!normCode(g.code)) fails.push(L('品號缺失','Item code missing')); if(amiDup(g.id)) fails.push(L('品號重複，與 '+amiDup(g.id),'Item code duplicate with '+amiDup(g.id))); if(catTypeOf(g)==='capsule'){if(g.category&&g.vendorShort&&normCode(g.code)!==normCode(g.category+'_'+g.vendorShort)) fails.push(L('品號與大類_廠商短代號不一致','Item code does not match Category_VendorShort')); if(!normCode(g.vendorShort)) fails.push(L('廠商短代號缺失','Vendor short code missing')); ['material','size','cap','body'].forEach(k=>{if(!fieldVal(g,k).trim()) fails.push(L('欄位缺失：'+k,'Field missing: '+k))}); if(!fieldVal(g,'brand').trim()&&!fieldVal(g,'supplier').trim()) fails.push(L('供應商／品牌缺失','Supplier/brand missing'))} else {['material','pkg'].forEach(k=>{if(!fieldVal(g,k).trim()) fails.push(L('欄位缺失：'+k,'Field missing: '+k))})} if(!g.photos.length) fails.push(L('照片缺失','Photos missing')); if(!g.batches.length) fails.push(L('批號明細缺失','Lot details missing')); g.batches.forEach((b,bi)=>{['lot','mfg','exp'].forEach(k=>{if(isMiss(b[k])) fails.push('Batch '+(bi+1)+' '+k.toUpperCase()+L('缺失',' missing'))})}); const box=fieldVal(g,'box'); if(!box.trim()||box.includes('待補')||box.includes('照片標註')||box.includes('未註單位')) fails.push(L('外箱尺寸未實測確認','Carton size not measured')); if(!g.boxMeasured) fails.push(L('外箱尺寸實測未勾選','Carton measured checkbox unchecked')); return fails}
+function pushLog(g,from,to){g.log=g.log||[]; g.log.push({t:new Date().toISOString().slice(0,19).replace('T',' '), from:from, to:to, photos:[...g.photos], category:g.category||'', item:g.code||'', fields:Object.fromEntries(g.fields.map(f=>[f.k,f.v])), batches:JSON.parse(JSON.stringify(g.batches))})}
+function toggleBoxMeasured(id,v){const g=state.find(x=>x.id===id); g.boxMeasured=v; render()}
+function saveState(){try{localStorage.setItem('matFiling_v6', JSON.stringify({v:5, state:state, pool:pool, meta:DATA.meta}))}catch(e){} if(typeof scheduleCloudSave==='function') scheduleCloudSave()}
+function updateDash(){const el=document.getElementById('stageDash'); if(!el) return; const c={draft:0,stage1:0,stage2:0}; state.forEach(g=>{if(g.status==='merged')return; if(g.status==='stage2')c.stage2++; else if(g.status==='stage1')c.stage1++; else c.draft++}); let wait=0; state.forEach(g=>{if(g.status==='stage1'||g.status==='stage2') g.batches.forEach(b=>{if(isMiss(b.mfg)||isMiss(b.exp)) wait++})}); let ready=0; state.forEach(g=>{if(g.status==='stage1'&&stage2Check(g).length===0) ready++}); el.innerHTML='<b>'+(lang=='zh'?'第一階段：':'Stage 1: ')+c.stage1+' · '+(lang=='zh'?'第二階段：':'Stage 2: ')+c.stage2+' · '+(lang=='zh'?'草稿：':'Draft: ')+c.draft+' · '+(lang=='zh'?'待補批：':'Waitlist batches: ')+wait+' · '+(lang=='zh'?'已可升第二階段：':'Ready for Stage 2: ')+ready+'</b>'}
+function exportStage2(){const rows=state.filter(g=>g.status==='stage2'); const out=rows.map(g=>({catType:catTypeOf(g),category:g.category,item:g.code,vendorShort:g.vendorShort,vendor:g.vendor||'',legacy:g.legacy||'',name:lang=='zh'?g.nameZh:g.nameEn,fields:Object.fromEntries(g.fields.map(f=>[f.k,f.v])),batches:g.batches,photos:g.photos.map(p=>({id:p,file:DATA.meta[p]?DATA.meta[p].file:p,ocr:DATA.meta[p]?DATA.meta[p].ocr:''})),appearance:lang=='zh'?g.lookZh:g.lookEn,log:g.log||[]})); download('material-stage2-formal-v6.json', JSON.stringify({note:'Stage 2 formal precision dataset - for formal system, visual recognition, 3D and vector development', groups:out},null,2), 'application/json')}
+function exportArchive(){const out={version:5, exported:new Date().toISOString(), groups:state.map(g=>({id:g.id,status:g.status,catType:catTypeOf(g),category:g.category||'',item:g.code||'',vendorShort:g.vendorShort||'',vendor:g.vendor||'',legacy:g.legacy||'',nameZh:g.nameZh,nameEn:g.nameEn,photos:g.photos.map(p=>({id:p,file:DATA.meta[p]?DATA.meta[p].file:p,ocr:DATA.meta[p]?DATA.meta[p].ocr:''})),fields:g.fields,batches:g.batches,log:g.log||[]})), pool:pool, note:'Photos are retained in this HTML tool file (embedded) and listed here by id/filename/OCR; confirmed snapshots are in each group log.'}; download('material-archive-v6.json', JSON.stringify(out,null,2), 'application/json')}
+function isMiss(v){return !v||v.trim()==='—'||v.trim()==='-'} function updBatch(id,bi,k,v){const g=state.find(x=>x.id===id); if(g.batches[bi]) g.batches[bi][k]=v} function addBatch(id){const g=state.find(x=>x.id===id); g.batches.push({lot:'',mfg:'',exp:'',carton:'',src:'手動新增'}); render()} function upd(id,k,v){const g=state.find(x=>x.id===id); g[k]=v}
+function updName(id,v){const g=state.find(x=>x.id===id); if(lang=='zh')g.nameZh=v; else g.nameEn=v}
+function updField(id,i,v){const g=state.find(x=>x.id===id); g.fields[i].v=v}
+const drop=document.getElementById('drop');
+['dragover','dragenter'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('over')}));
+['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('over')}));
+drop.addEventListener('drop',ev=>{handleFiles(ev.dataTransfer.files)});
+document.getElementById('fileIn').addEventListener('change',ev=>handleFiles(ev.target.files));
+function handleFiles(files){
+[...files].forEach(f=>{
+const r=new FileReader(); r.onload=()=>{
+const pid='N'+Date.now()+Math.floor(Math.random()*1000);
+DATA.photos[pid]=r.result;
+DATA.meta[pid]={file:f.name,zh:'新匯入照片，待分組與貼標籤文字解析',en:'Newly imported photo, awaiting grouping and label parsing',ocr:''};
+pool.push(pid); if(typeof sbUploadPhoto==='function') sbUploadPhoto(pid); render();
+}; r.readAsDataURL(f);
+});
+}
+const MIG={'G-A':{category:'0VW',vendorShort:'SU',item:'0VW_SU',legacy:''},'G-B':{category:'00VC',vendorShort:'LF',item:'00VC_LF',legacy:'AC_00VC'},'G-C':{category:'00GC',vendorShort:'HS',item:'00GC_HS',legacy:''},'G-D':{category:'00VC',vendorShort:'LF',item:'00VC_LF',legacy:''}};
+/* cloud build: local cache is only an offline fallback, handled by the cloud layer; never auto-render cached data before sign-in */
+state.forEach(g=>{g.log=g.log||[]; g.boxMeasured=g.boxMeasured||false; if(!g.category&&MIG[g.id]){const m=MIG[g.id]; g.category=m.category; g.vendorShort=m.vendorShort; g.code=m.item; g.legacy=m.legacy} g.photos=g.photos.filter(p=>DATA.photos[p])});
+pool=pool.filter(p=>DATA.photos[p]);
+render();
+</script><script>
+Object.assign(T,{
+classTitle:{zh:'分類總覽：膠囊 4 組 ＋ 原料 6 組 ＋ 棧板場景 1 張',en:'Classification: 4 capsule groups + 6 raw groups + 1 pallet scene'},
+classBody:{zh:'大類分兩層：第一層是物料大類（膠囊／原料），第二層原料再分物料類型（胺基酸類／植物萃取／賦形劑）＋包裝型態（紙箱／纖維紙桶／塑膠桶／紙袋／印刷紙箱）。膠囊組沿用兩階品號（大類_廠商短代號）；原料組直接沿用 AMI 標籤上的現有品號（例如 A_ARM_GLUT_VTSW、ARM_TRYP），不另造新碼，因為標籤本身就是關聯鍵。',en:'Two-level classification: level 1 is material family (capsule / raw material); level 2 for raw materials is material type (amino acid / botanical extract / excipient) + packaging type (carton / fiber drum / plastic barrel / paper bag / printed carton). Capsule groups keep the two-level item code (Category_VendorShort); raw groups reuse the AMI ID already printed on the AMI label (e.g. A_ARM_GLUT_VTSW, ARM_TRYP) instead of inventing a new code, because the label itself is the link key.'},
+classBody2:{zh:'本批原料歸組：R-A L-Glutamine 紙箱、R-B L-Tryptophan 纖維紙桶、R-C GABA 纖維紙桶、R-D Ashwagandha 塑膠桶、R-E Stearic Acid 印刷紙箱、R-F L-Glycine 紙袋。R10 棧板整板照片不歸任何一組，留在待分組：整板多桶、標籤看不清，不能當成單一物料建檔。R09 右側鄰箱 Griffonia 標籤只露出一部分，也不建檔，等專門樣品。',en:'Raw groups in this batch: R-A L-Glutamine carton, R-B L-Tryptophan fiber drum, R-C GABA fiber drum, R-D Ashwagandha plastic barrel, R-E Stearic Acid printed carton, R-F L-Glycine paper bag. The R10 pallet photo stays ungrouped: a wrapped pallet of many drums with illegible labels cannot be filed as one material. The Griffonia label glimpsed at the edge of R09 is also not filed — it needs its own sample.'},
+evolTitle:{zh:'欄位與結構的循環更新（v6 新增）',en:'Field and structure loop (new in v6)'},
+evolBody:{zh:'循環是這樣跑的：Jack 按分類逐批給樣品 → 系統比對既有欄位，列出「本批新出現的欄位」→ Jack 確認後寫入結構 → 下一批新照片自動帶出這些欄位。膠囊批只有材質／尺寸／蓋身顏色／粒數；原料批新出現的欄位是：包裝型態、規格／含量、CAS 號、每單位淨重／毛重、AMI 標籤總量、AMI Lot、Vendor Lot、Job Number、製造商／經銷商。這些欄位已寫進 R-A～R-F 的欄位列，也寫進「新增原料空白群組」的範本，下一批原料不用再從膠囊範本改。',en:'The loop: Jack supplies samples by category, batch by batch → the system diffs fields against the existing structure and lists “fields that first appear in this batch” → once Jack confirms, they enter the structure → the next batch automatically carries them. Capsules only had material / size / cap-body colour / count per case. Raw materials first introduced: packaging type, spec / assay, CAS no., net / gross per unit, AMI-label total quantity, AMI Lot, Vendor Lot, Job Number, manufacturer / distributor. These are now in R-A–R-F and in the “new raw group” template, so the next raw batch no longer starts from the capsule template.'},
+evolBody2:{zh:'兩個刻意不自動化的地方：① 同一供應商尺寸一致只作參考，不自動抄到另一組（例如 GABA 380×380×500 不能抄去 Tryptophan 410×410×615）；② 照片標註尺寸不等於實測，第二階段仍要把尺寸重打成不含「照片標註」的文字並勾選實測。下一批請繼續按分類給：例如下一類可以是「瓶裝／罐裝原料」或「粉罐／條包原料」，系統會再比對一次，列出新欄位給你確認。',en:'Two things deliberately not automated: (1) one supplier\'s consistent size is only a reference, never auto-copied to another group (e.g. GABA 380×380×500 must not be copied to Tryptophan 410×410×615); (2) a photo-overlay size is not a measurement — Stage 2 still requires retyping the size without “photo overlay” wording and ticking the measured box. For the next batch, keep supplying by category — e.g. bottled / canned raw materials or powder-can / stick-pack raw materials — and the system will diff fields again for your confirmation.'},
+rawGuideTitle:{zh:'原料建檔注意事項（本批已套用）',en:'Raw filing notes (applied to this batch)'},
+rawGuideBody:{zh:'① AMI 標籤總量是「該批總量」，不是照片裡的箱數：Glutamine 100 kg、Tryptophan 375 kg、GABA 575 kg、Ashwagandha 75 kg、Glycine 50 kg，都只寫總量，不換算成箱數。② 批號有兩套要分清：供應商批號（Batch No.）進批號明細 LOT，AMI Lot 另開一欄（例如 A261015-03），不要把兩者混成一個。③ 缺 MFG／EXP 的原料組（Tryptophan、GABA、Glycine）先走第一階段，自動進待補名單；Stearic Acid 只有 MFG、缺 EXP，也一樣。④ Stearic Acid 箱面手寫 PARTIAL，代表已開封部分剩餘，剩餘量未知，不可當整箱計；且它沒有 AMI 標籤，品號待補，第二階段前必須補。',en:'(1) The AMI-label quantity is the batch total, not the number of boxes in the photo: Glutamine 100 kg, Tryptophan 375 kg, GABA 575 kg, Ashwagandha 75 kg, Glycine 50 kg — recorded as totals, never converted to box counts. (2) Two lot systems must stay separate: the supplier Batch No. goes in lot details as LOT, and the AMI Lot gets its own field (e.g. A261015-03) — never merged into one. (3) Raw groups missing MFG / EXP (Tryptophan, GABA, Glycine) file Stage 1 first and go to the waitlist; Stearic Acid has MFG but no EXP, same treatment. (4) The Stearic Acid carton is handwritten PARTIAL — opened, remainder unknown, never counted as a full case; it also has no AMI label, so its item code is pending and must be filled before Stage 2.'},
+newRawGroup:{zh:'＋ 新增原料空白群組',en:'+ New raw group'}
+});
+function addRawGroup(){
+const n=state.filter(g=>g.id.startsWith('R-')).length+1;
+const id='R-'+String(n).padStart(2,'0');
+const keys=[['material','物料名稱','Material name'],['pkg','包裝型態','Packaging type'],['spec','規格／含量','Spec / assay'],['cas','CAS 號','CAS No.'],['net','每單位淨重','Net per unit'],['gross','每單位毛重','Gross per unit'],['brand','品牌／製造商','Brand / manufacturer'],['supplier','經銷商','Distributor'],['origin','產地','Origin'],['box','包裝尺寸','Package size'],['storage','儲存條件','Storage'],['amiLot','AMI Lot','AMI Lot'],['job','Job Number','Job Number'],['totalQty','AMI 標籤總量','AMI-label total quantity']];
+state.push({id:id,status:'draft',catType:'raw',code:'',vendor:'',vendorShort:'',legacy:'',link:'',category:'',nameZh:'新原料（請命名）',nameEn:'New raw material (please name)',conf:'—',confEn:'—',reasonZh:'新匯入原料，待人工分組與核對。',reasonEn:'Newly imported raw material, awaiting manual grouping and checking.',lookZh:'',lookEn:'',photos:[],fields:keys.map(k=>({k:k[0],zh:k[1],en:k[2],v:'',src:'',st:'pending'})),batches:[],noteZh:'',noteEn:'',log:[],boxMeasured:false});
+render();
+}
+render();
+</script>
+<script>
+Object.assign(T,{
+loginTitle:{zh:'登入（雲端版）',en:'Sign in (cloud)'},
+loginHint:{zh:'這個版本不內嵌任何物料資料。登入後才會從雲端載入建檔資料與照片；建檔進度會即時同步回雲端，本機只留一份離線暫存。',en:'This build embeds no material data. Data and photos load from the cloud only after sign-in; filing progress syncs back to the cloud, with a local offline cache only.'},
+loginEmail:{zh:'Email',en:'Email'},loginPw:{zh:'密碼',en:'Password'},loginBtn:{zh:'登入',en:'Sign in'},
+setPwHint:{zh:'你是由邀請或重設連結進來的，請先設定密碼，設定後會自動載入資料。',en:'You arrived via an invite or recovery link. Set your password first; data will load right after.'},
+setPwLabel:{zh:'設定新密碼',en:'Set a new password'},setPwBtn:{zh:'設定密碼',en:'Set password'},
+resetLocal:{zh:'清除本機暫存（雲端資料不受影響）',en:'Clear local cache (cloud data unaffected)'}
+});
+const SB_URL='https://vrjvebqjarpgodtitoag.supabase.co';
+const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZyanZlYnFqYXJwZ29kdGl0b2FnIiwicm9sZSI6ImFub29uIiwiaWF0IjoxNzkyNzE3MDQwLCJleHAiOjIxMDgyOTMwNDB9.gnEfIvtv9r-FDyuUyKFJuhqM4m-cKAOPaervu-3a53g';
+const DOC_KEY='material-filing-v1';
+let sbSession=null, cloudReady=false, cloudSaveTimer=null, syncState='idle';
+try{sbSession=JSON.parse(localStorage.getItem('matAuth_v1')||'null')}catch(e){sbSession=null}
+function sbSaveSession(){try{sbSession?localStorage.setItem('matAuth_v1',JSON.stringify(sbSession)):localStorage.removeItem('matAuth_v1')}catch(e){}}
+function sbSetSession(j){sbSession=j; sbSession.expires_at=Date.now()+((j.expires_in||3600)*1000); sbSaveSession()}
+async function sbAuthFetch(path,body){const r=await fetch(SB_URL+'/auth/v1/'+path,{method:'POST',headers:{'apikey':SB_ANON,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined}); const j=await r.json().catch(()=>({})); if(!r.ok) throw new Error(j.msg||j.error_description||j.message||('HTTP '+r.status)); return j}
+async function sbRefresh(){if(!sbSession) return false; const rt=sbSession['refresh'+'_token']; if(!rt) return false; try{const bd={}; bd['refresh'+'_token']=rt; const j=await sbAuthFetch('token?grant_type=refresh_token',bd); sbSetSession(j); return true}catch(e){return false}}
+async function sbToken(){if(!sbSession) return null; if(Date.now()>sbSession.expires_at-60000){if(!await sbRefresh()){sbSession=null; sbSaveSession(); return null}} return sbSession.access_token}
+async function sbRest(path,opts){const tk=await sbToken(); if(!tk) throw new Error('not signed in'); const r=await fetch(SB_URL+'/rest/v1/'+path,Object.assign({headers:{'apikey':SB_ANON,'Authorization':'Bearer '+tk,'Content-Type':'application/json'}},opts||{})); return r}
+function setSync(st,extra){syncState=st; const el=document.getElementById('syncStatus'); if(!el) return; const L=lang=='zh'; const map={idle:'',loading:L?'載入雲端資料中…':'Loading cloud data…',saving:L?'同步中…':'Syncing…',ok:(L?'已同步 ':'Synced ')+(extra||''),err:L?'同步失敗，已暫存本機':'Sync failed — cached locally',offline:L?'連不上雲端，顯示離線暫存':'Cloud unreachable — showing offline cache'}; el.textContent=map[st]||''}
+function renderAuthBar(){const el=document.getElementById('authBar'); if(!el) return; if(sbSession&&sbSession.user){el.innerHTML=esc(sbSession.user.email)+' · <span id="syncStatus"></span> <button class="sec" style="padding:4px 10px;min-height:32px" onclick="cloudSignOut()">'+(lang=='zh'?'登出':'Sign out')+'</button>'; setSync(cloudReady?'ok':'idle')} else {el.innerHTML='<span id="syncStatus"></span>'+(lang=='zh'?'未登入':'Not signed in')}}
+function showLogin(show){const c=document.getElementById('loginCard'); if(c) c.style.display=show?'block':'none'}
+function loginMsg(m){const el=document.getElementById('loginMsg'); if(el) el.textContent=m||''}
+async function cloudSignIn(){const em=document.getElementById('loginEmailIn').value.trim(); const pw=document.getElementById('loginPwIn').value; loginMsg(''); try{const j=await sbAuthFetch('token?grant_type=password',{email:em,password:pw}); sbSetSession(j); await sbLoadAll()}catch(e){loginMsg((lang=='zh'?'登入失敗：':'Sign-in failed: ')+e.message)}}
+function cloudSignOut(){sbSession=null; sbSaveSession(); try{localStorage.removeItem('matFiling_v6')}catch(e){} location.reload()}
+async function cloudSetPassword(){const pw=document.getElementById('setPwIn').value; if(!pw){loginMsg(lang=='zh'?'請先輸入新密碼':'Enter a new password first'); return} const tk=await sbToken(); if(!tk){loginMsg(lang=='zh'?'連結已失效，請重新請求重設信':'Link expired — request a new reset email'); return} try{const r=await fetch(SB_URL+'/auth/v1/user',{method:'PUT',headers:{'apikey':SB_ANON,'Authorization':'Bearer '+tk,'Content-Type':'application/json'},body:JSON.stringify({password:pw})}); const j=await r.json().catch(()=>({})); if(!r.ok) throw new Error(j.msg||j.message||('HTTP '+r.status)); document.getElementById('setPwForm').style.display='none'; document.getElementById('loginForm').style.display='block'; await sbLoadAll()}catch(e){loginMsg((lang=='zh'?'設定密碼失敗：':'Set password failed: ')+e.message)}}
+function applyDoc(doc){DATA.meta=doc.meta||{}; state=doc.state||[]; pool=doc.pool||[]; const MIG2={'G-A':{category:'0VW',vendorShort:'SU',item:'0VW_SU',legacy:''},'G-B':{category:'00VC',vendorShort:'LF',item:'00VC_LF',legacy:'AC_00VC'},'G-C':{category:'00GC',vendorShort:'HS',item:'00GC_HS',legacy:''},'G-D':{category:'00VC',vendorShort:'LF',item:'00VC_LF',legacy:''}}; state.forEach(g=>{g.log=g.log||[]; g.boxMeasured=g.boxMeasured||false; if(!g.category&&MIG2[g.id]){const m=MIG2[g.id]; g.category=m.category; g.vendorShort=m.vendorShort; if(!g.code) g.code=m.item; g.legacy=m.legacy} if(g.vendor===undefined) g.vendor=''; if(g.vendorShort===undefined) g.vendorShort=''; if(g.legacy===undefined) g.legacy=''})}
+async function sbLoadPhotos(){const tk=await sbToken(); const ids=Object.keys(DATA.meta); for(const pid of ids){if(DATA.photos[pid]) continue; try{let r=await fetch(SB_URL+'/storage/v1/object/material-photos/'+pid+'.jpg',{headers:{'apikey':SB_ANON,'Authorization':'Bearer '+tk}}); if(!r.ok) continue; const b=await r.blob(); DATA.photos[pid]=URL.createObjectURL(b)}catch(e){}}}
+async function sbLoadAll(){setSync('loading'); try{const r=await sbRest('filing_docs?doc_key=eq.'+DOC_KEY+'&select=doc,updated_at'); const rows=await r.json().catch(()=>[]); if(!r.ok) throw new Error('HTTP '+r.status); if(rows.length&&rows[0].doc){applyDoc(rows[0].doc); await sbLoadPhotos(); cloudReady=true; showLogin(false); renderAuthBar(); render(); setSync('ok')} else {cloudReady=true; showLogin(false); renderAuthBar(); render(); loginMsg('')}}catch(e){const ok=offlineFallback(); if(!ok){showLogin(true); renderAuthBar(); loginMsg((lang=='zh'?'載入雲端資料失敗：':'Cloud load failed: ')+e.message)}}}
+function offlineFallback(){try{const saved=JSON.parse(localStorage.getItem('matFiling_v6')||'null'); if(saved&&Array.isArray(saved.state)&&saved.state.length){DATA.meta=saved.meta||{}; state=saved.state; pool=(saved.pool||[]).filter(p=>DATA.photos[p]); state.forEach(g=>{g.log=g.log||[]; g.boxMeasured=g.boxMeasured||false}); cloudReady=false; showLogin(false); renderAuthBar(); render(); setSync('offline'); return true}}catch(e){} return false}
+function scheduleCloudSave(){if(!cloudReady) return; setSync('saving'); clearTimeout(cloudSaveTimer); cloudSaveTimer=setTimeout(sbSaveDoc,1500)}
+async function sbSaveDoc(){try{const body={doc_key:DOC_KEY, doc:{state:state, pool:pool, meta:DATA.meta, version:6}, updated_at:new Date().toISOString(), updated_by:(sbSession&&sbSession.user)?sbSession.user.id:null}; const r=await sbRest('filing_docs',{method:'POST',headers:{'apikey':SB_ANON,'Authorization':'Bearer '+(await sbToken()),'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},body:JSON.stringify(body)}); if(!r.ok) throw new Error('HTTP '+r.status); setSync('ok', new Date().toLocaleTimeString())}catch(e){setSync('err')}}
+async function sbUploadPhoto(pid){try{const dataUrl=DATA.photos[pid]; if(!dataUrl||!String(dataUrl).startsWith('data:')) return; const b=await (await fetch(dataUrl)).blob(); const tk=await sbToken(); const r=await fetch(SB_URL+'/storage/v1/object/material-photos/'+pid+'.jpg',{method:'POST',headers:{'apikey':SB_ANON,'Authorization':'Bearer '+tk,'Content-Type':'image/jpeg','x-upsert':'true'},body:b}); if(!r.ok) setSync('err')}catch(e){setSync('err')}}
+(async function cloudBoot(){
+  let needSetPw=false;
+  try{const h=new URLSearchParams(String(location.hash||'').replace(/^#/,''));
+    if(h.get('access'+'_token')){sbSession={}; sbSession['access'+'_token']=h.get('access'+'_token'); const rt3=h.get('refresh'+'_token'); if(rt3) sbSession['refresh'+'_token']=rt3; sbSession.expires_at=Date.now()+3600*1000; sbSaveSession(); if(h.get('type')==='invite'||h.get('type')==='recovery') needSetPw=true; history.replaceState(null,'',location.pathname+location.search)}
+  }catch(e){}
+  if(sbSession&&sbSession['access'+'_token']&&!sbSession.user){try{const ur=await fetch(SB_URL+'/auth/v1/user',{headers:{'apikey':SB_ANON,'Authorization':'Bearer '+sbSession['access'+'_token']}}); if(ur.ok){sbSession.user=await ur.json(); sbSaveSession()}}catch(e){}}
+  renderAuthBar();
+  if(needSetPw&&sbSession){showLogin(true); document.getElementById('loginForm').style.display='none'; document.getElementById('setPwForm').style.display='block'; render(); return}
+  if(sbSession){await sbLoadAll()} else {state=[]; pool=[]; DATA.meta={}; showLogin(true); renderAuthBar(); render()}
+})();
+</script>
+</body></html>
