@@ -295,7 +295,7 @@ setPwLabel:{zh:'設定新密碼',en:'Set a new password'},setPwBtn:{zh:'設定�
 resetLocal:{zh:'清除本機暫存（雲端資料不受影響）',en:'Clear local cache (cloud data unaffected)'}
 });
 const SB_URL='https://vrjvebqjarpgodtitoag.supabase.co';
-const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZyanZlYnFqYXJwZ29kdGl0b2FnIiwicm9sZSI6ImFub29uIiwiaWF0IjoxNzkyNzE3MDQwLCJleHAiOjIxMDgyOTMwNDB9.gnEfIvtv9r-FDyuUyKFJuhqM4m-cKAOPaervu-3a53g';
+const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZyanZlYnFqYXJwZ29kdGl0b2FnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3MTcwNDAsImV4cCI6MjEwODI5MzA0MH0.gnEfIvtv9r-FDyuUyKFJuhqM4m-cKAOPaervu-3a53g';
 const DOC_KEY='material-filing-v1';
 let sbSession=null, cloudReady=false, cloudSaveTimer=null, syncState='idle';
 try{sbSession=JSON.parse(localStorage.getItem('matAuth_v1')||'null')}catch(e){sbSession=null}
