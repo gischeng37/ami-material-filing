@@ -32,7 +32,7 @@ details{margin-top:10px}summary{cursor:pointer;font-weight:700}
 <p><button onclick="cloudSetPassword()" data-k="setPwBtn"></button></p></div>
 <div id="loginMsg" style="color:#991b1b;margin-top:8px"></div></div>
 
-<div class="kpi"><div><b>23</b><span data-k="k1">張照片</span></div><div><b id="gCount">4</b><span data-k="k2">個自動群組</span></div><div><b>1</b><span data-k="k3">個疑似合併項</span></div><div><b>2</b><span data-k="k4">項尺寸待補／待確認</span></div></div>
+<div class="kpi"><div><b>27</b><span data-k="k1">張照片</span></div><div><b id="gCount">4</b><span data-k="k2">個自動群組</span></div><div><b>1</b><span data-k="k3">個疑似合併項</span></div><div><b>2</b><span data-k="k4">項尺寸待補／待確認</span></div></div>
 
 <div class="card"><h2 data-k="s1">① 匯入照片（拖曳 / 點選 / 多張）</h2>
 <div class="drop" id="drop"><p data-k="drop">把照片拖到這裡，或點一下選檔。已載入的照片不會被覆蓋，新照片先進「待分組」。</p>
@@ -266,7 +266,7 @@ pool=pool.filter(p=>DATA.photos[p]);
 render();
 </script><script>
 Object.assign(T,{
-classTitle:{zh:'分類總覽：膠囊 4 組 ＋ 原料 6 組 ＋ 包材 1 組 ＋ 棧板場景 1 張',en:'Classification: 4 capsule groups + 6 raw groups + 1 packaging group + 1 pallet scene'},
+classTitle:{zh:'分類總覽：膠囊 4 組 ＋ 原料 6 組 ＋ 包材 2 組 ＋ 棧板場景 1 張',en:'Classification: 4 capsule groups + 6 raw groups + 2 packaging groups + 1 pallet scene'},
 classBody:{zh:'大類分兩層：第一層是物料大類（膠囊／原料），第二層原料再分物料類型（胺基酸類／植物萃取／賦形劑）＋包裝型態（紙箱／纖維紙桶／塑膠桶／紙袋／印刷紙箱）。膠囊組沿用兩階品號（大類_廠商短代號）；原料組直接沿用 AMI 標籤上的現有品號（例如 A_ARM_GLUT_VTSW、ARM_TRYP），不另造新碼，因為標籤本身就是關聯鍵。',en:'Two-level classification: level 1 is material family (capsule / raw material); level 2 for raw materials is material type (amino acid / botanical extract / excipient) + packaging type (carton / fiber drum / plastic barrel / paper bag / printed carton). Capsule groups keep the two-level item code (Category_VendorShort); raw groups reuse the AMI ID already printed on the AMI label (e.g. A_ARM_GLUT_VTSW, ARM_TRYP) instead of inventing a new code, because the label itself is the link key.'},
 classBody2:{zh:'本批原料歸組：R-A L-Glutamine 紙箱、R-B L-Tryptophan 纖維紙桶、R-C GABA 纖維紙桶、R-D Ashwagandha 塑膠桶、R-E Stearic Acid 印刷紙箱、R-F L-Glycine 紙袋。R10 棧板整板照片不歸任何一組，留在待分組：整板多桶、標籤看不清，不能當成單一物料建檔。R09 右側鄰箱 Griffonia 標籤只露出一部分，也不建檔，等專門樣品。',en:'Raw groups in this batch: R-A L-Glutamine carton, R-B L-Tryptophan fiber drum, R-C GABA fiber drum, R-D Ashwagandha plastic barrel, R-E Stearic Acid printed carton, R-F L-Glycine paper bag. The R10 pallet photo stays ungrouped: a wrapped pallet of many drums with illegible labels cannot be filed as one material. The Griffonia label glimpsed at the edge of R09 is also not filed — it needs its own sample.'},
 evolTitle:{zh:'欄位與結構的循環更新（v6 新增）',en:'Field and structure loop (new in v6)'},
